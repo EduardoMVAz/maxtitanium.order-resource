@@ -61,8 +61,8 @@ public class OrderResource implements OrderController {
     }
 
     @Override
-    public ResponseEntity<List<OrderOut>> readByClient(String clientId) {
-        final List<Order> dbOrders = orderService.readByClient(clientId);
+    public ResponseEntity<List<OrderOut>> readByClient(String id) {
+        final List<Order> dbOrders = orderService.readByClient(id);
 
         if (dbOrders == null) {
             throw new RuntimeException("Client id not found");

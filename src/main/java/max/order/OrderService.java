@@ -25,6 +25,7 @@ public class OrderService {
     @CachePut(value = "orders", key = "#result.id()")
     public Order create(Order in) {
         OrderModel order = new OrderModel(in);
+        order = orderRepository.save(order);
 
         if (in.products() != null) {
             for (OrderDetail p : in.products()) {
@@ -42,6 +43,7 @@ public class OrderService {
                 orderDetailRepository.save(new OrderDetailModel(p));
             }
         } else {
+            orderRepository.deleteById(order.id());
             return null;
         }
 

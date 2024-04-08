@@ -17,7 +17,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 
 @Entity
-@Table(name = "order")
+@Table(name = "t_order")
 @EqualsAndHashCode(of = "id")
 @Builder @Getter @Setter @Accessors(fluent = true, chain = true)
 @NoArgsConstructor @AllArgsConstructor
