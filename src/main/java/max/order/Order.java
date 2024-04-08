@@ -18,8 +18,9 @@ public class Order implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String id;
-    private String clientId;
+    private String idClient;
     private String address;
-    private Map<Integer, Integer> products;
-    private Integer orderValue;
+    private String orderDate;
+    private Map<String, Integer> products;
+    private Double orderValue;
 }

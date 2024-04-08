@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: max-product
+    name: max-order
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/max}
     username: ${DATABASE_USERNAME:max}
@@ -11,11 +11,11 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     baseline-on-migrate: true
-    schemas: product
+    schemas: order
   jpa:
     properties:
       hibernate:
-        default_schema: product
+        default_schema: order
   redis:
     host: max-redis
     port: 6379
@@ -23,7 +23,7 @@ spring:
 management:
   endpoints:
     web:
-      base-path: /products/actuator
+      base-path: /orders/actuator
       exposure:
         include: ['*', 'prometheus']
 
@@ -33,3 +33,9 @@ eureka:
     fetch-registry: true
     service-url:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+
+springdoc:
+  api-docs:
+    path: /orders/v3/api-docs
+  swagger-ui:
+    path: /orders/swagger-ui

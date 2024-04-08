@@ -1,6 +1,16 @@
 package max.order;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,27 +37,50 @@ public class OrderModel {
     private String id;
 
     @Column(name = "id_client")
-    private String clientId;
+    private String idClient;
 
     @Column(name = "tx_address")
     private String address;
 
+    @Column(name = "dt_order_date")
+    private LocalDate orderDate;
+
     @Column(name = "nr_order_value")
-    private Integer orderValue;
+    private Double orderValue;
+
+    @ElementCollection
+    @CollectionTable(name = "order_product_detail", joinColumns = @JoinColumn(name = "id_order"))
+    private List<OrderProductDetail> products;
 
     public OrderModel(Order o) {
         this.id = o.id();
-        this.clientId = o.clientId();
+        this.idClient = o.idClient();
         this.address = o.address();
-        this.orderValue = o.orderValue();
+        this.orderDate = LocalDate.now();
+        this.orderValue = 0.0;
+
+        this.products = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : o.products().entrySet()) {
+            products.add(new OrderProductDetail(entry.getKey(), entry.getValue()));
+        }
     }
 
     public Order to() {
         return Order.builder()
             .id(id)
-            .clientId(clientId)
+            .idClient(idClient)
             .address(address)
+            .orderDate(orderDate.toString())
             .orderValue(orderValue)
+            .products(products.stream().collect(Collectors.toMap(OrderProductDetail::idProduct, OrderProductDetail::quantity)))
             .build();
     }
+}
+
+@Embeddable
+@Getter @Setter @Accessors(fluent = true, chain = true)
+@NoArgsConstructor @AllArgsConstructor
+class OrderProductDetail {
+    private String idProduct;
+    private Integer quantity;
 }
