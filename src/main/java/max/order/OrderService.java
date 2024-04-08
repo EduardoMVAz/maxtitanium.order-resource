@@ -17,14 +17,17 @@ public class OrderService {
     private OrderRepository orderRepository;
 
     @Autowired
+    private OrderDetailRepository orderDetailRepository;
+
+    @Autowired
     private ProductController productController;
 
     @CachePut(value = "orders", key = "#result.id()")
     public Order create(Order in) {
         OrderModel order = new OrderModel(in);
 
-        if (order.products() != null) {
-            order.products().forEach(p -> {
+        if (in.products() != null) {
+            for (OrderDetail p : in.products()) {
                 final String idProduct = p.idProduct();
                 final Integer quantity = p.quantity();
 
@@ -34,23 +37,58 @@ public class OrderService {
                 }
 
                 order.orderValue(order.orderValue() + product.price() * quantity);
-            });
+                p.idOrder(order.id());
+                // todo: tirar o save do for
+                orderDetailRepository.save(new OrderDetailModel(p));
+            }
         } else {
             return null;
         }
 
-        return orderRepository.save(new OrderModel(in)).to();
+        Order savedOrder = orderRepository.save(order).to();
+        savedOrder.products(in.products());
+
+        return savedOrder;
     }
 
     @Cacheable(value = "orders", key = "#id", unless = "#result == null")
     public Order read(String id) {
-        return orderRepository.findById(id).map(OrderModel::to).orElse(null);
+        Order savedOrder = orderRepository.findById(id).orElse(null).to();
+
+        if (savedOrder == null) {
+            return null;
+        }
+
+        List<OrderDetail> products = orderDetailRepository.findByIdOrder(id)
+            .stream()
+            .map(OrderDetailModel::to)
+            .collect(Collectors.toList());
+
+        savedOrder.products(products);
+
+        return savedOrder; 
     }
 
     public List<Order> readByClient(String idClient) {
-        return orderRepository.findByIdClient(idClient).stream()
+        List<Order> savedOrder = orderRepository.findByIdClient(idClient)
+            .stream()
             .map(OrderModel::to)
             .collect(Collectors.toList());
+        
+        if (savedOrder == null) {
+            return null;
+        }
+
+        for (Order o : savedOrder) {
+            List<OrderDetail> products = orderDetailRepository.findByIdOrder(o.id())
+                .stream()
+                .map(OrderDetailModel::to)
+                .collect(Collectors.toList());
+
+            o.products(products);
+        }
+
+        return savedOrder;
     }
 
     @CachePut(value = "orders", key = "#result.id()", unless = "#result == null")
@@ -70,11 +108,10 @@ public class OrderService {
         }
 
         if (in.products() != null) {
-            dbOrder.products(in.products().entrySet().stream()
-                .map(e -> new OrderProductDetail(e.getKey(), e.getValue()))
-                .collect(Collectors.toList()));
-            
-            for (OrderProductDetail p : dbOrder.products()) {
+            orderDetailRepository.deleteByIdOrder(id);
+            dbOrder.orderValue(0.0);
+
+            for (OrderDetail p : in.products()) {
                 final String idProduct = p.idProduct();
                 final Integer quantity = p.quantity();
 
@@ -84,21 +121,38 @@ public class OrderService {
                 }
 
                 dbOrder.orderValue(dbOrder.orderValue() + product.price() * quantity);
+                p.idOrder(dbOrder.id());
+                // todo: tirar o save do for
+                orderDetailRepository.save(new OrderDetailModel(p));
             }
         }
+        
+        Order savedOrder = orderRepository.save(dbOrder).to();
+        savedOrder.products(in.products());
 
-        return orderRepository.save(new OrderModel(in)).to();
+        return savedOrder;
     }
 
     @CachePut(value = "orders", key = "#id")
     public Order delete(String id) {
-        final OrderModel dbProduct = orderRepository.findById(id).orElse(null);
 
-        if (dbProduct == null) {
+        if (!orderRepository.existsById(id)) {
             return null;
         }
 
+        final OrderModel dbOrder = orderRepository.findById(id).orElse(null);
         orderRepository.deleteById(id);
-        return dbProduct.to();
+        
+        final List<OrderDetail> dbOrderDetail = orderDetailRepository.findByIdOrder(id)
+            .stream()
+            .map(OrderDetailModel::to)
+            .collect(Collectors.toList());
+
+        orderDetailRepository.deleteByIdOrder(id);
+
+        Order order = dbOrder.to();
+        order.products(dbOrderDetail);
+
+        return order;
     }
 }
