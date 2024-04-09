@@ -7,6 +7,10 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import feign.FeignException;
+import max.order.exceptions.OrderNotFoundException;
+import max.order.exceptions.ProductNotFoundException;
+import max.order.exceptions.ProductsRequiredException;
 import max.product.ProductController;
 import max.product.ProductOut;
 
@@ -32,19 +36,26 @@ public class OrderService {
                 final String idProduct = p.idProduct();
                 final Integer quantity = p.quantity();
 
-                final ProductOut product = productController.read(idProduct).getBody();
-                if (product == null) {
-                    throw new RuntimeException("Product id not found");
-                }
+                try {
+                    final ProductOut product = productController.read(idProduct).getBody();
+                    if (product == null) {
+                        orderRepository.deleteById(order.id());
+                        throw new ProductNotFoundException(idProduct);
+                    }
+    
+                    order.orderValue(order.orderValue() + product.price() * quantity);
+                    p.idOrder(order.id());
+                    // todo: tirar o save do for
+                    orderDetailRepository.save(new OrderDetailModel(p));
 
-                order.orderValue(order.orderValue() + product.price() * quantity);
-                p.idOrder(order.id());
-                // todo: tirar o save do for
-                orderDetailRepository.save(new OrderDetailModel(p));
+                } catch (FeignException e) {
+                    orderRepository.deleteById(order.id());
+                    throw new ProductNotFoundException(idProduct);
+                }
             }
         } else {
             orderRepository.deleteById(order.id());
-            return null;
+            throw new ProductsRequiredException("Products are required to create an order");
         }
 
         Order savedOrder = orderRepository.save(order).to();
@@ -55,11 +66,13 @@ public class OrderService {
 
     @Cacheable(value = "orders", key = "#id", unless = "#result == null")
     public Order read(String id) {
-        Order savedOrder = orderRepository.findById(id).orElse(null).to();
+        OrderModel orderDB = orderRepository.findById(id).orElse(null);
 
-        if (savedOrder == null) {
-            return null;
+        if (orderDB == null) {
+            throw new OrderNotFoundException(id);
         }
+
+        Order savedOrder = orderDB.to();
 
         List<OrderDetail> products = orderDetailRepository.findByIdOrder(id)
             .stream()
@@ -98,7 +111,7 @@ public class OrderService {
         OrderModel dbOrder = orderRepository.findById(id).orElse(null);
 
         if (dbOrder == null) {
-            return null;
+            throw new OrderNotFoundException(id);
         }
 
         if (in.idClient() != null) {
@@ -110,23 +123,33 @@ public class OrderService {
         }
 
         if (in.products() != null) {
-            orderDetailRepository.deleteByIdOrder(id);
+            List<OrderDetailModel> oldDetails = orderDetailRepository.findByIdOrder(id);
             dbOrder.orderValue(0.0);
 
             for (OrderDetail p : in.products()) {
                 final String idProduct = p.idProduct();
                 final Integer quantity = p.quantity();
+                
+                try {
+                    final ProductOut product = productController.read(idProduct).getBody();
+                    if (product == null) {
+                        throw new ProductNotFoundException(idProduct);
+                    }
 
-                final ProductOut product = productController.read(idProduct).getBody();
-                if (product == null) {
-                    throw new RuntimeException("Product id not found");
+                    dbOrder.orderValue(dbOrder.orderValue() + product.price() * quantity);
+                    p.idOrder(dbOrder.id());
+                    // todo: tirar o save do for
+                    orderDetailRepository.save(new OrderDetailModel(p));
+
+                } catch (FeignException e){
+                    throw new ProductNotFoundException(idProduct);
                 }
-
-                dbOrder.orderValue(dbOrder.orderValue() + product.price() * quantity);
-                p.idOrder(dbOrder.id());
-                // todo: tirar o save do for
-                orderDetailRepository.save(new OrderDetailModel(p));
             }
+
+            // delete old details
+            for (OrderDetailModel od : oldDetails) {
+                orderDetailRepository.deleteById(od.id());
+            } 
         }
         
         Order savedOrder = orderRepository.save(dbOrder).to();
@@ -139,7 +162,7 @@ public class OrderService {
     public Order delete(String id) {
 
         if (!orderRepository.existsById(id)) {
-            return null;
+            throw new OrderNotFoundException(id);
         }
 
         final OrderModel dbOrder = orderRepository.findById(id).orElse(null);

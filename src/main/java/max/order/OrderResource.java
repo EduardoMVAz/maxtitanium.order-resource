@@ -50,10 +50,6 @@ public class OrderResource implements OrderController {
 
         final Order dbOrder = orderService.read(id);
 
-        if (dbOrder == null) {
-            throw new RuntimeException("Order id not found");
-        }
-
         return new ResponseEntity<OrderOut>(
             OrderParser.to(dbOrder),
             HttpStatus.OK
@@ -63,10 +59,6 @@ public class OrderResource implements OrderController {
     @Override
     public ResponseEntity<List<OrderOut>> readByClient(String id) {
         final List<Order> dbOrders = orderService.readByClient(id);
-
-        if (dbOrders == null) {
-            throw new RuntimeException("Client id not found");
-        }
 
         return new ResponseEntity<List<OrderOut>>(
             dbOrders.stream()
@@ -79,13 +71,8 @@ public class OrderResource implements OrderController {
     @Override
     public ResponseEntity<OrderOut> create(OrderIn orderIn) {
         final Order order = OrderParser.to(orderIn);
-        // Acessar outro microsserviço e setar o valor do pedido
 
         final Order dbOrder = orderService.create(order);
-
-        if (dbOrder == null) {
-            throw new RuntimeException("Order must have products");
-        }
 
         return new ResponseEntity<OrderOut>(
             OrderParser.to(dbOrder),
