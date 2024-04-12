@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Build Interface') {
             steps {
-                build job: 'Auth', wait: true
+                build job: 'Order', wait: true
             }
         }
 
@@ -16,7 +16,7 @@ pipeline {
         stage('Build Image') {
             steps {
                 script {
-                    account = docker.build("joaolucasmbc/auth:${env.BUILD_ID}", "-f Dockerfile .")
+                    account = docker.build("joaolucasmbc/order:${env.BUILD_ID}", "-f Dockerfile .")
                 }
             }
         }
