@@ -16,7 +16,7 @@ pipeline {
         stage('Build Image') {
             steps {
                 script {
-                    account = docker.build("joaolucasmbc/order:${env.BUILD_ID}", "-f Dockerfile .")
+                    account = docker.build("pejassinaturasdocker/order:${env.BUILD_ID}", "-f Dockerfile .")
                 }
             }
         }
