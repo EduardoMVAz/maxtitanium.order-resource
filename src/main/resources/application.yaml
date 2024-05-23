@@ -16,9 +16,9 @@ spring:
     properties:
       hibernate:
         default_schema: t_order
-  #redis:
-  #  host: max-redis
-  #  port: 6379
+  redis:
+    host: max-redis
+    port: 6379
 
 management:
   endpoints:
