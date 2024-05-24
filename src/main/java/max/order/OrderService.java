@@ -1,5 +1,6 @@
 package max.order;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -180,4 +181,28 @@ public class OrderService {
 
         return order;
     }
+
+    public List<Order> list() {
+        List<OrderModel> savedOrderModels = new ArrayList<>();
+        orderRepository.findAll().forEach(savedOrderModels::add);
+
+        List<Order> savedOrders = savedOrderModels.stream()
+            .map(OrderModel::to)
+            .collect(Collectors.toList());
+
+        if (savedOrders.isEmpty()) {
+            return null;
+        }
+
+        for (Order o : savedOrders) {
+            List<OrderDetail> products = orderDetailRepository.findByIdOrder(o.id())
+                .stream()
+                .map(OrderDetailModel::to)
+                .collect(Collectors.toList());
+            o.products(products);
+        }
+
+        return savedOrders;
+    }
+
 }

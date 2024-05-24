@@ -101,4 +101,16 @@ public class OrderResource implements OrderController {
             HttpStatus.OK
         );
     }
+
+    @Override
+    public ResponseEntity<List<OrderOut>> list() {
+        final List<Order> dbOrders = orderService.list();
+
+        return new ResponseEntity<List<OrderOut>>(
+            dbOrders.stream()
+                .map(o -> OrderParser.to(o))
+                .collect(Collectors.toList()),
+            HttpStatus.OK
+        );
+    }
 }
