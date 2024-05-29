@@ -15,6 +15,8 @@ import max.order.exceptions.ProductsRequiredException;
 import max.product.ProductController;
 import max.product.ProductOut;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+
 @Service
 public class OrderService {
     
@@ -27,6 +29,7 @@ public class OrderService {
     @Autowired
     private ProductController productController;
 
+    @CircuitBreaker(name = "orderService", fallbackMethod = "fallbackOrderCreate")
     @CachePut(value = "orders", key = "#result.id()")
     public Order create(Order in) {
         OrderModel order = new OrderModel(in);
@@ -65,6 +68,7 @@ public class OrderService {
         return savedOrder;
     }
 
+    @CircuitBreaker(name = "orderService", fallbackMethod = "fallbackOrderRead")
     @Cacheable(value = "orders", key = "#id", unless = "#result == null")
     public Order read(String id) {
         OrderModel orderDB = orderRepository.findById(id).orElse(null);
@@ -85,6 +89,7 @@ public class OrderService {
         return savedOrder; 
     }
 
+    @CircuitBreaker(name = "orderService", fallbackMethod = "fallbackOrderReadByClient")
     public List<Order> readByClient(String idClient) {
         List<Order> savedOrder = orderRepository.findByIdClient(idClient)
             .stream()
@@ -107,6 +112,7 @@ public class OrderService {
         return savedOrder;
     }
 
+    @CircuitBreaker(name = "orderService", fallbackMethod = "fallbackOrderUpdate")
     @CachePut(value = "orders", key = "#result.id()", unless = "#result == null")
     public Order update(String id, Order in) {
         OrderModel dbOrder = orderRepository.findById(id).orElse(null);
@@ -159,6 +165,7 @@ public class OrderService {
         return savedOrder;
     }
 
+    @CircuitBreaker(name = "orderService", fallbackMethod = "fallbackOrderDelete")
     @CachePut(value = "orders", key = "#id")
     public Order delete(String id) {
 
@@ -182,6 +189,7 @@ public class OrderService {
         return order;
     }
 
+    @CircuitBreaker(name = "orderService", fallbackMethod = "fallbackOrderList")
     public List<Order> list() {
         List<OrderModel> savedOrderModels = new ArrayList<>();
         orderRepository.findAll().forEach(savedOrderModels::add);
@@ -205,4 +213,23 @@ public class OrderService {
         return savedOrders;
     }
 
+    public void fallbackOrderCreate(Order in, Throwable t) {
+        throw new RuntimeException("Failed to create order", t);
+    }
+    public void fallbackOrderRead(String id, Throwable t) {
+        throw new RuntimeException("Failed to read order", t);
+    }
+    public void fallbackOrderReadByClient(String idClient, Throwable t) {
+        throw new RuntimeException("Failed to read order by client", t);
+    }
+    public void fallbackOrderUpdate(String id, Order in, Throwable t) {
+        throw new RuntimeException("Failed to update order", t);
+    }
+
+    public void fallbackOrderDelete(String id, Throwable t) {
+        throw new RuntimeException("Failed to delete order", t);
+    }
+    public void fallbackOrderList(Throwable t) {
+        throw new RuntimeException("Failed to list orders", t);
+    }
 }
